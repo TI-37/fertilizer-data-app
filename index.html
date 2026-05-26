@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>肥料・土壌データ管理</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Fertilizer & Soil Log</p>
+        <h1>肥料・土壌データ管理</h1>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <div class="view-pane entry-view is-active" id="entryView">
+      <section class="panel entry-panel" aria-label="データ登録">
+        <div class="tabs" role="tablist" aria-label="登録対象">
+          <button class="tab is-active" type="button" data-tab="fertilizer">肥料</button>
+          <button class="tab" type="button" data-tab="soil">土壌</button>
+        </div>
+
+        <form id="fertilizerForm" class="form-grid active-form">
+          <input type="hidden" id="fertilizerId" />
+          <div class="form-row span-2 photo-input-row">
+            <label for="packagePhoto">パッケージ写真</label>
+            <input id="packagePhoto" type="file" accept="image/*" />
+          </div>
+          <div class="photo-preview span-2" id="photoPreview">
+            <span>写真プレビュー</span>
+          </div>
+          <div class="ocr-panel span-2" id="ocrPanel">
+            <div class="ocr-head">
+              <strong>写真読み取り</strong>
+              <button class="small-button" id="retryOcr" type="button">再読み取り</button>
+            </div>
+            <p id="ocrStatus">写真を選ぶと、成分表の文字を自動で読み取ります。</p>
+            <div class="ocr-results" id="ocrResults"></div>
+          </div>
+
+          <div class="form-row">
+            <label for="fertilizerName">名前</label>
+            <input id="fertilizerName" required placeholder="例: 有機配合肥料 8-8-8" />
+          </div>
+          <div class="form-row">
+            <label for="fertilizerType">種類</label>
+            <select id="fertilizerType">
+              <option>化成肥料</option>
+              <option>有機肥料</option>
+              <option>液体肥料</option>
+              <option>堆肥・改良材</option>
+              <option>微量要素</option>
+              <option>その他</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="manufacturer">メーカー</label>
+            <input id="manufacturer" placeholder="任意" />
+          </div>
+          <div class="form-row">
+            <label for="registeredAt">登録日</label>
+            <input id="registeredAt" type="date" required />
+          </div>
+
+          <details class="toggle-section span-2" open>
+            <summary>成分内訳</summary>
+            <section class="fertilizer-traits" aria-label="肥料特質">
+              <div class="trait-grid">
+                <label for="fertilizerEffect">肥効
+                  <select id="fertilizerEffect">
+                    <option>未選択</option>
+                    <option>速効性</option>
+                    <option>緩効性</option>
+                    <option>中間</option>
+                    <option>混合・併用</option>
+                  </select>
+                </label>
+                <label for="fertilizerTraitKind">種類
+                  <select id="fertilizerTraitKind">
+                    <option>未選択</option>
+                    <optgroup label="窒素質肥料">
+                      <option>硫安</option>
+                      <option>塩安</option>
+                      <option>りん安</option>
+                      <option>硝酸石灰</option>
+                      <option>硝酸ソーダ</option>
+                      <option>硝安</option>
+                      <option>尿素</option>
+                      <option>石灰窒素</option>
+                      <option>IB窒素</option>
+                      <option>CDU窒素</option>
+                      <option>被覆窒素</option>
+                    </optgroup>
+                    <optgroup label="りん酸質肥料">
+                      <option>過りん酸石灰</option>
+                      <option>熔成りん肥</option>
+                      <option>苦土重焼りん</option>
+                    </optgroup>
+                    <optgroup label="加里質肥料">
+                      <option>硫酸加里</option>
+                      <option>塩化加里</option>
+                      <option>けい酸加里肥料</option>
+                    </optgroup>
+                    <optgroup label="苦土質肥料">
+                      <option>硫酸苦土</option>
+                      <option>水酸化苦土</option>
+                    </optgroup>
+                    <optgroup label="石灰質肥料">
+                      <option>生石灰</option>
+                      <option>消石灰</option>
+                      <option>苦土石灰</option>
+                      <option>炭酸石灰</option>
+                      <option>貝化石肥料</option>
+                    </optgroup>
+                    <optgroup label="けい酸質肥料">
+                      <option>鉱さいけい酸質肥料</option>
+                      <option>けい酸加里肥料</option>
+                      <option>シリカゲル肥料</option>
+                    </optgroup>
+                    <optgroup label="複合肥料">
+                      <option>化成肥料</option>
+                      <option>配合肥料</option>
+                      <option>成形複合肥料</option>
+                      <option>混合堆肥複合肥料</option>
+                    </optgroup>
+                    <optgroup label="微量要素肥料">
+                      <option>硫酸マンガン肥料</option>
+                      <option>炭酸マンガン肥料</option>
+                      <option>鉱さいマンガン肥料</option>
+                      <option>ほう酸肥料</option>
+                      <option>ほう酸塩肥料</option>
+                    </optgroup>
+                    <optgroup label="有機質肥料">
+                      <option>動物質肥料</option>
+                      <option>植物性肥料</option>
+                      <option>有機廃棄物肥料</option>
+                    </optgroup>
+                    <optgroup label="その他肥料">
+                      <option>葉面散布剤</option>
+                      <option>ペースト肥料</option>
+                      <option>農薬その他の物が混入される肥料</option>
+                    </optgroup>
+                    <optgroup label="特殊肥料・土壌改良資材">
+                      <option>魚かす・干魚肥料等</option>
+                      <option>米ぬか・コーヒーかす・草木灰等</option>
+                      <option>堆肥と動物の排せつ物</option>
+                      <option>バーク堆肥・腐植酸質資材</option>
+                      <option>石灰質資材・熔成りん肥・堆肥等</option>
+                      <option>微生物資材・竹粉砕物等</option>
+                    </optgroup>
+                  </select>
+                </label>
+              </div>
+            </section>
+            <fieldset class="component-fieldset">
+              <legend>成分内訳</legend>
+              <div class="component-grid">
+                <div class="component-group-label">多量要素</div>
+                <label>C 炭素<input id="carbon" type="number" min="0" step="0.1" value="0" /></label>
+                <label>H 水素<input id="hydrogen" type="number" min="0" step="0.1" value="0" /></label>
+                <label>O 酸素<input id="oxygen" type="number" min="0" step="0.1" value="0" /></label>
+                <label>N 窒素<input id="nitrogen" type="number" min="0" step="0.1" value="0" /></label>
+                <label>P リン酸<input id="phosphorus" type="number" min="0" step="0.1" value="0" /></label>
+                <label>K カリ<input id="potassium" type="number" min="0" step="0.1" value="0" /></label>
+                <label>Ca 石灰<input id="calcium" type="number" min="0" step="0.1" value="0" /></label>
+                <label>Mg 苦土<input id="magnesium" type="number" min="0" step="0.1" value="0" /></label>
+                <label>S 硫黄<input id="sulfur" type="number" min="0" step="0.1" value="0" /></label>
+                <div class="component-group-label">微量要素</div>
+                <label>Fe 鉄<input id="iron" type="number" min="0" step="0.1" value="0" /></label>
+                <label>Mn マンガン<input id="manganese" type="number" min="0" step="0.1" value="0" /></label>
+                <label>Zn 亜鉛<input id="zinc" type="number" min="0" step="0.1" value="0" /></label>
+                <label>Cu 銅<input id="copper" type="number" min="0" step="0.1" value="0" /></label>
+                <label>B ホウ素<input id="boron" type="number" min="0" step="0.1" value="0" /></label>
+                <label>Mo モリブデン<input id="molybdenum" type="number" min="0" step="0.1" value="0" /></label>
+                <label>Cl 塩素<input id="chlorine" type="number" min="0" step="0.1" value="0" /></label>
+                <label>Ni ニッケル<input id="nickel" type="number" min="0" step="0.1" value="0" /></label>
+              </div>
+            </fieldset>
+          </details>
+
+          <section class="component-summary span-2" aria-label="概要">
+            <div class="summary-head">
+              <strong>概要</strong>
+              <span>保証成分量</span>
+            </div>
+            <div id="guaranteeSummary" class="summary-body">
+              成分を入力すると、法規表記に近い保証成分量の概要を表示します。
+            </div>
+          </section>
+
+          <div class="form-row span-2">
+            <label for="fertilizerMemo">メモ</label>
+            <textarea id="fertilizerMemo" rows="2" placeholder="施用量、対象作物、におい、溶けやすさなど"></textarea>
+          </div>
+          <div class="form-actions span-2">
+            <button class="secondary" id="resetFertilizer" type="button">新規</button>
+            <button class="primary" type="submit">保存</button>
+          </div>
+        </form>
+
+        <form id="soilForm" class="form-grid">
+          <input type="hidden" id="soilId" />
+          <div class="form-row">
+            <label for="soilPlace">場所</label>
+            <input id="soilPlace" required placeholder="例: 第1畑 北側" />
+          </div>
+          <div class="form-row">
+            <label for="soilDate">記録日</label>
+            <input id="soilDate" type="date" required />
+          </div>
+          <div class="form-row">
+            <label for="soilTexture">土性</label>
+            <select id="soilTexture">
+              <option>砂土</option>
+              <option>砂壌土</option>
+              <option>壌土</option>
+              <option>埴壌土</option>
+              <option>埴土</option>
+              <option>未判定</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="soilCrop">作物・区画</label>
+            <input id="soilCrop" placeholder="任意" />
+          </div>
+
+          <details class="toggle-section span-2" open>
+            <summary>土壌成分表</summary>
+            <fieldset class="component-fieldset">
+              <legend>土壌成分表</legend>
+              <div class="component-grid">
+                <label>pH<input id="soilPh" type="number" min="0" max="14" step="0.1" value="6.5" /></label>
+                <label>EC<input id="soilEc" type="number" min="0" step="0.01" value="0" /></label>
+                <label>N<input id="soilN" type="number" min="0" step="0.1" value="0" /></label>
+                <label>P<input id="soilP" type="number" min="0" step="0.1" value="0" /></label>
+                <label>K<input id="soilK" type="number" min="0" step="0.1" value="0" /></label>
+                <label>腐植<input id="soilHumus" type="number" min="0" step="0.1" value="0" /></label>
+              </div>
+            </fieldset>
+          </details>
+          <div class="form-row span-2">
+            <label for="soilMemo">メモ</label>
+            <textarea id="soilMemo" rows="3" placeholder="排水性、前作、採土条件など"></textarea>
+          </div>
+          <div class="form-actions span-2">
+            <button class="secondary" id="resetSoil" type="button">新規</button>
+            <button class="primary" type="submit">保存</button>
+          </div>
+        </form>
+      </section>
+
+      <details class="panel visual-panel toggle-section" aria-label="成分グラフ" open>
+        <summary class="chart-summary">
+          <span>成分グラフ</span>
+        </summary>
+        <div class="chart-wrap">
+          <canvas id="componentChart" width="720" height="430"></canvas>
+          <p id="chartEmpty" class="empty-message">肥料を登録すると成分の比較が表示されます。</p>
+        </div>
+        <div id="selectedSummary" class="selected-summary"></div>
+      </details>
+      </div>
+
+      <section class="panel list-panel view-pane" id="recordsView" aria-label="登録データ">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Records</p>
+            <h2>登録データ</h2>
+          </div>
+          <div class="list-controls">
+            <button class="small-button" id="backToEntry" type="button">入力へ戻る</button>
+            <select id="dataView" aria-label="表示対象">
+              <option value="fertilizers">肥料</option>
+              <option value="soils">土壌</option>
+            </select>
+            <select id="sortMode" aria-label="並べ替え">
+              <option value="createdDesc">登録順</option>
+              <option value="nameAsc">名前</option>
+              <option value="typeAsc">種類</option>
+              <option value="dateDesc">日付</option>
+            </select>
+          </div>
+        </div>
+        <div id="records" class="records"></div>
+      </section>
+
+      <button class="records-open-button" id="recordsOpenButton" type="button">登録データ</button>
+    </main>
+
+    <template id="fertilizerCardTemplate">
+      <article class="record-card fertilizer-card">
+        <button class="card-main" type="button"></button>
+        <div class="card-actions">
+          <button class="small-button edit" type="button">編集</button>
+          <button class="small-button danger delete" type="button">削除</button>
+        </div>
+      </article>
+    </template>
+
+    <template id="soilCardTemplate">
+      <article class="record-card soil-card">
+        <button class="card-main" type="button"></button>
+        <div class="card-actions">
+          <button class="small-button edit" type="button">編集</button>
+          <button class="small-button danger delete" type="button">削除</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
