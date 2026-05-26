@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>肥料・土壌データ管理</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260526-npk-band" />
   </head>
   <body>
     <header class="app-header">
@@ -42,7 +42,7 @@
 
           <div class="form-row">
             <label for="fertilizerName">名前</label>
-            <input id="fertilizerName" required placeholder="例: 有機配合肥料 8-8-8" />
+            <input id="fertilizerName" required list="fertilizerNameOptions" placeholder="例: 有機配合肥料 8-8-8" />
           </div>
           <div class="form-row">
             <label for="fertilizerType">種類</label>
@@ -57,7 +57,7 @@
           </div>
           <div class="form-row">
             <label for="manufacturer">メーカー</label>
-            <input id="manufacturer" placeholder="任意" />
+            <input id="manufacturer" list="manufacturerOptions" placeholder="任意" />
           </div>
           <div class="form-row">
             <label for="registeredAt">登録日</label>
@@ -188,6 +188,38 @@
             <div id="guaranteeSummary" class="summary-body">
               成分を入力すると、法規表記に近い保証成分量の概要を表示します。
             </div>
+            <div class="npk-kind-panel">
+              <div class="npk-kind-grid">
+                <label for="nitrogenKind">N
+                  <select id="nitrogenKind">
+                    <option>未選択</option>
+                    <option>アンモニア態窒素</option>
+                    <option>硝酸態窒素</option>
+                    <option>硝酸態窒素＋アンモニア態窒素</option>
+                    <option>窒素全量</option>
+                    <option>緩効性窒素</option>
+                    <option>被覆窒素</option>
+                  </select>
+                </label>
+                <label for="phosphorusKind">P
+                  <select id="phosphorusKind">
+                    <option>未選択</option>
+                    <option>水溶性りん酸</option>
+                    <option>可溶性りん酸</option>
+                    <option>く溶性りん酸</option>
+                    <option>りん酸全量</option>
+                  </select>
+                </label>
+                <label for="potassiumKind">K
+                  <select id="potassiumKind">
+                    <option>未選択</option>
+                    <option>水溶性加里</option>
+                    <option>く溶性加里</option>
+                    <option>加里全量</option>
+                  </select>
+                </label>
+              </div>
+            </div>
           </section>
 
           <div class="form-row span-2">
@@ -204,7 +236,7 @@
           <input type="hidden" id="soilId" />
           <div class="form-row">
             <label for="soilPlace">場所</label>
-            <input id="soilPlace" required placeholder="例: 第1畑 北側" />
+            <input id="soilPlace" required list="soilPlaceOptions" placeholder="例: 第1畑 北側" />
           </div>
           <div class="form-row">
             <label for="soilDate">記録日</label>
@@ -223,7 +255,7 @@
           </div>
           <div class="form-row">
             <label for="soilCrop">作物・区画</label>
-            <input id="soilCrop" placeholder="任意" />
+            <input id="soilCrop" list="soilCropOptions" placeholder="任意" />
           </div>
 
           <details class="toggle-section span-2" open>
@@ -287,6 +319,11 @@
       </section>
 
       <button class="records-open-button" id="recordsOpenButton" type="button">登録データ</button>
+
+      <datalist id="fertilizerNameOptions"></datalist>
+      <datalist id="manufacturerOptions"></datalist>
+      <datalist id="soilPlaceOptions"></datalist>
+      <datalist id="soilCropOptions"></datalist>
     </main>
 
     <template id="fertilizerCardTemplate">

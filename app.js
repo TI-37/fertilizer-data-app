@@ -79,11 +79,16 @@ const el = {
   tabs: document.querySelectorAll(".tab"),
   fertilizerId: document.querySelector("#fertilizerId"),
   fertilizerName: document.querySelector("#fertilizerName"),
+  fertilizerNameOptions: document.querySelector("#fertilizerNameOptions"),
   fertilizerType: document.querySelector("#fertilizerType"),
   manufacturer: document.querySelector("#manufacturer"),
+  manufacturerOptions: document.querySelector("#manufacturerOptions"),
   registeredAt: document.querySelector("#registeredAt"),
   fertilizerEffect: document.querySelector("#fertilizerEffect"),
   fertilizerTraitKind: document.querySelector("#fertilizerTraitKind"),
+  nitrogenKind: document.querySelector("#nitrogenKind"),
+  phosphorusKind: document.querySelector("#phosphorusKind"),
+  potassiumKind: document.querySelector("#potassiumKind"),
   packagePhoto: document.querySelector("#packagePhoto"),
   photoPreview: document.querySelector("#photoPreview"),
   ocrPanel: document.querySelector("#ocrPanel"),
@@ -110,9 +115,11 @@ const el = {
   fertilizerMemo: document.querySelector("#fertilizerMemo"),
   soilId: document.querySelector("#soilId"),
   soilPlace: document.querySelector("#soilPlace"),
+  soilPlaceOptions: document.querySelector("#soilPlaceOptions"),
   soilDate: document.querySelector("#soilDate"),
   soilTexture: document.querySelector("#soilTexture"),
   soilCrop: document.querySelector("#soilCrop"),
+  soilCropOptions: document.querySelector("#soilCropOptions"),
   soilPh: document.querySelector("#soilPh"),
   soilEc: document.querySelector("#soilEc"),
   soilN: document.querySelector("#soilN"),
@@ -184,6 +191,9 @@ el.fertilizerForm.addEventListener("submit", (event) => {
     traits: {
       effect: el.fertilizerEffect.value,
       kind: el.fertilizerTraitKind.value,
+      nitrogenKind: el.nitrogenKind.value,
+      phosphorusKind: el.phosphorusKind.value,
+      potassiumKind: el.potassiumKind.value,
     },
     components: readFertilizerComponents(),
     memo: el.fertilizerMemo.value.trim(),
@@ -248,6 +258,7 @@ function render() {
   drawChart();
   renderSummary();
   renderGuaranteeSummary();
+  renderSuggestionOptions();
   renderRecords();
 }
 
@@ -271,6 +282,26 @@ function renderRecords() {
       el.records.append(createSoilCard(record));
     }
   });
+}
+
+function renderSuggestionOptions() {
+  fillDatalist(el.fertilizerNameOptions, state.fertilizers.map((record) => record.name));
+  fillDatalist(el.manufacturerOptions, state.fertilizers.map((record) => record.manufacturer));
+  fillDatalist(el.soilPlaceOptions, state.soils.map((record) => record.place));
+  fillDatalist(el.soilCropOptions, state.soils.map((record) => record.crop));
+}
+
+function fillDatalist(datalist, values) {
+  datalist.innerHTML = "";
+  uniqueValues(values).forEach((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    datalist.append(option);
+  });
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
 }
 
 function readFertilizerComponents() {
@@ -328,6 +359,7 @@ function createFertilizerCard(record) {
       <h3 class="card-title">${escapeHtml(record.name)}</h3>
       <div class="meta-line"><span>${escapeHtml(record.type)}</span><span>${formatDate(record.registeredAt)}</span></div>
       <div class="meta-line"><span>${escapeHtml(record.traits?.effect || "肥効未選択")}</span><span>${escapeHtml(record.traits?.kind || "種類未選択")}</span></div>
+      <div class="meta-line"><span>N ${escapeHtml(record.traits?.nitrogenKind || "未選択")}</span><span>P ${escapeHtml(record.traits?.phosphorusKind || "未選択")}</span><span>K ${escapeHtml(record.traits?.potassiumKind || "未選択")}</span></div>
       <div class="mini-components">${componentKeys.map((key) => `<span>${componentLabels[key]} ${record.components?.[key] ?? 0}</span>`).join("")}</div>
       <div class="meta-line"><span>${escapeHtml(record.manufacturer || "メーカー未記録")}</span></div>
     </div>
@@ -420,6 +452,9 @@ function editFertilizer(record) {
   el.registeredAt.value = record.registeredAt;
   el.fertilizerEffect.value = record.traits?.effect || "未選択";
   el.fertilizerTraitKind.value = record.traits?.kind || "未選択";
+  el.nitrogenKind.value = record.traits?.nitrogenKind || "未選択";
+  el.phosphorusKind.value = record.traits?.phosphorusKind || "未選択";
+  el.potassiumKind.value = record.traits?.potassiumKind || "未選択";
   componentKeys.forEach((key) => {
     el[key].value = record.components?.[key] ?? 0;
   });
@@ -480,6 +515,9 @@ function resetFertilizerForm() {
   setOcrState("写真を選ぶと、成分表の文字を自動で読み取ります。");
   el.fertilizerEffect.value = "未選択";
   el.fertilizerTraitKind.value = "未選択";
+  el.nitrogenKind.value = "未選択";
+  el.phosphorusKind.value = "未選択";
+  el.potassiumKind.value = "未選択";
   componentKeys.forEach((key) => {
     el[key].value = 0;
   });
