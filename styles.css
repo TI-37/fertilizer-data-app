@@ -78,24 +78,25 @@ h2 {
   grid-template-columns: 1fr;
   grid-template-areas: "content";
   gap: 12px;
-  padding: 12px clamp(12px, 3vw, 32px) 86px;
+  padding: 12px clamp(12px, 3vw, 32px) 72px;
 }
 
 .records-open-button {
   position: fixed;
-  left: max(10px, env(safe-area-inset-left));
-  right: max(10px, env(safe-area-inset-right));
-  bottom: max(10px, env(safe-area-inset-bottom));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
   z-index: 10;
-  max-width: 560px;
-  margin: 0 auto;
-  min-height: 54px;
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
+  min-width: 126px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #cbd7c5;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--accent-dark);
   font-weight: 800;
-  box-shadow: 0 14px 34px rgba(35, 55, 41, 0.16);
+  font-size: 13px;
+  box-shadow: 0 8px 22px rgba(35, 55, 41, 0.12);
+  backdrop-filter: blur(12px);
 }
 
 .view-pane {
@@ -235,14 +236,14 @@ textarea {
   border-radius: 7px;
   background: var(--field);
   color: var(--ink);
-  padding: 6px 7px;
+  padding: 4px 7px;
   outline: none;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 input,
 select {
-  min-height: 30px;
+  min-height: 28px;
 }
 
 textarea {
@@ -417,8 +418,8 @@ textarea:focus {
 }
 
 .component-grid input {
-  min-height: 30px;
-  padding: 6px 7px;
+  min-height: 28px;
+  padding: 4px 7px;
 }
 
 .component-group-label {
@@ -549,7 +550,7 @@ textarea:focus {
 }
 
 #backToEntry {
-  white-space: nowrap;
+  display: none;
 }
 
 .primary,
@@ -640,9 +641,9 @@ textarea:focus {
 
 .records {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 14px;
-  padding: 18px;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 10px;
 }
 
 .record-card {
@@ -652,33 +653,113 @@ textarea:focus {
   overflow: hidden;
 }
 
-.card-main {
+.record-toggle {
   display: grid;
-  width: 100%;
-  min-height: 190px;
-  border: 0;
-  padding: 0;
-  text-align: left;
-  color: inherit;
-  background: transparent;
 }
 
-.card-photo {
-  width: 100%;
-  height: 130px;
+.record-summary {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 9px;
+  min-height: 58px;
+  padding: 7px 9px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.record-summary::-webkit-details-marker {
+  display: none;
+}
+
+.record-summary::marker {
+  content: "";
+}
+
+.record-thumb {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
   background: #e8ede3;
   object-fit: cover;
 }
 
-.card-body {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
+.soil-thumb {
+  background: linear-gradient(145deg, #d9c5a3, #eef2e8);
 }
 
-.card-title {
-  margin: 0;
-  font-size: 17px;
+.record-row-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.record-title,
+.record-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-title {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.record-sub {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.record-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+}
+
+.record-chevron::before {
+  content: "+";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent-dark);
+  background: #eef2e8;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.record-toggle[open] .record-chevron::before {
+  content: "-";
+}
+
+.record-detail {
+  display: grid;
+  gap: 8px;
+  padding: 8px 9px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.record-photo {
+  width: 100%;
+  max-height: 180px;
+  background: #e8ede3;
+  object-fit: cover;
+  border-radius: 7px;
+  display: block;
 }
 
 .meta-line,
@@ -699,8 +780,116 @@ textarea:focus {
 .card-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 0 12px 12px;
+  gap: 6px;
+}
+
+.record-detail .card-actions .small-button,
+.record-edit-form .card-actions .primary,
+.record-edit-form .card-actions .secondary {
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.record-memo {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mini-bars {
+  display: grid;
+  gap: 5px;
+}
+
+.mini-bar-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.mini-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #e8ede3;
+  overflow: hidden;
+}
+
+.mini-bar-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left center;
+}
+
+.record-toggle.is-bar-animating .mini-bar-fill {
+  animation: miniBarFill 360ms ease-out both;
+}
+
+@keyframes miniBarFill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .record-toggle.is-bar-animating .mini-bar-fill {
+    animation: none;
+  }
+}
+
+.mini-bar-value {
+  text-align: right;
+}
+
+.record-edit-form {
+  gap: 9px;
+  display: none;
+}
+
+.record-card.is-editing .record-read {
+  display: none;
+}
+
+.record-card.is-editing .record-edit-form {
+  display: grid;
+}
+
+.inline-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.inline-field {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: 11px;
+}
+
+.inline-field input,
+.inline-field select,
+.inline-field textarea {
+  min-height: 28px;
+  padding: 5px 6px;
+  font-size: 12px;
+}
+
+.inline-field.span-all {
+  grid-column: 1 / -1;
 }
 
 .empty-state {
@@ -759,17 +948,17 @@ textarea:focus {
     flex-direction: column;
   }
 
-  .list-controls,
-  .records-open-button {
+  .list-controls {
     width: 100%;
     max-width: none;
   }
 
   .records-open-button {
-    left: 50%;
-    right: auto;
-    width: min(calc(100vw - 20px), 373px);
-    transform: translateX(-50%);
+    right: calc((100vw - min(100vw, 393px)) / 2 + 12px);
+    bottom: max(12px, env(safe-area-inset-bottom));
+    min-width: 112px;
+    min-height: 38px;
+    padding: 0 12px;
   }
 
   .form-grid {

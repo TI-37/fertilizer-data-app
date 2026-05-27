@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">肥料・土壌ログ</title>
+  <rect width="512" height="512" rx="108" fill="#2f6f55"/>
+  <path d="M128 338c0-92 59-168 135-168 63 0 113 50 113 112 0 77-64 130-151 130h-97z" fill="#f5f6f2"/>
+  <path d="M166 330c62-4 118-36 164-95" fill="none" stroke="#2f6f55" stroke-width="22" stroke-linecap="round"/>
+  <path d="M253 170c-12-38-4-69 23-94 43 34 56 72 38 114" fill="#c9d99f"/>
+  <circle cx="166" cy="148" r="28" fill="#f2c14e"/>
+  <circle cx="350" cy="354" r="30" fill="#f2c14e"/>
+</svg>

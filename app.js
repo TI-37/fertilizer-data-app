@@ -59,17 +59,32 @@ const guaranteeRules = {
 const soilLabels = {
   ph: "pH",
   ec: "EC",
-  n: "N",
-  p: "P",
-  k: "K",
-  humus: "腐植",
+  nitrateNitrogen: "硝酸態窒素",
+  ammoniumNitrogen: "アンモニア態窒素",
+  availablePhosphorus: "有効態リン酸",
+  calcium: "石灰",
+  magnesium: "苦土",
+  potassium: "カリ",
+  cec: "CEC",
+  phosphateAbsorption: "リン酸吸収係数",
+  humus: "腐食",
+  baseSaturation: "塩基飽和度",
+  calciumMagnesiumRatio: "Ca/Mg",
+  magnesiumPotassiumRatio: "Mg/K",
 };
+const fertilizerTypeOptions = ["化成肥料", "有機肥料", "液体肥料", "堆肥・改良材", "微量要素", "その他"];
+const fertilizerEffectOptions = ["未選択", "速効性", "緩効性", "中間", "混合・併用"];
+const nitrogenKindOptions = ["未選択", "アンモニア態窒素", "硝酸態窒素", "硝酸態窒素＋アンモニア態窒素", "窒素全量", "緩効性窒素", "被覆窒素"];
+const phosphorusKindOptions = ["未選択", "水溶性りん酸", "可溶性りん酸", "く溶性りん酸", "りん酸全量"];
+const potassiumKindOptions = ["未選択", "水溶性加里", "く溶性加里", "加里全量"];
+const soilTextureOptions = ["砂土", "砂壌土", "壌土", "埴壌土", "埴土", "未判定"];
 const colors = ["#2f6f55", "#c9871e", "#5d7fa3", "#8c6a45", "#b94635", "#6b7f3c"];
 
 let state = loadState();
 let selectedFertilizerId = state.fertilizers[0]?.id ?? null;
 let pendingPhoto = "";
 let pendingOcrImage = "";
+let chartAnimationFrame = 0;
 
 const el = {
   fertilizerForm: document.querySelector("#fertilizerForm"),
@@ -122,10 +137,18 @@ const el = {
   soilCropOptions: document.querySelector("#soilCropOptions"),
   soilPh: document.querySelector("#soilPh"),
   soilEc: document.querySelector("#soilEc"),
-  soilN: document.querySelector("#soilN"),
-  soilP: document.querySelector("#soilP"),
-  soilK: document.querySelector("#soilK"),
+  soilNitrateNitrogen: document.querySelector("#soilNitrateNitrogen"),
+  soilAmmoniumNitrogen: document.querySelector("#soilAmmoniumNitrogen"),
+  soilAvailablePhosphorus: document.querySelector("#soilAvailablePhosphorus"),
+  soilCalcium: document.querySelector("#soilCalcium"),
+  soilMagnesium: document.querySelector("#soilMagnesium"),
+  soilPotassium: document.querySelector("#soilPotassium"),
+  soilCec: document.querySelector("#soilCec"),
+  soilPhosphateAbsorption: document.querySelector("#soilPhosphateAbsorption"),
   soilHumus: document.querySelector("#soilHumus"),
+  soilBaseSaturation: document.querySelector("#soilBaseSaturation"),
+  soilCalciumMagnesiumRatio: document.querySelector("#soilCalciumMagnesiumRatio"),
+  soilMagnesiumPotassiumRatio: document.querySelector("#soilMagnesiumPotassiumRatio"),
   soilMemo: document.querySelector("#soilMemo"),
   chart: document.querySelector("#componentChart"),
   visualPanel: document.querySelector(".visual-panel"),
@@ -141,6 +164,15 @@ const el = {
 
 setDefaultDates();
 render();
+
+if (
+  "serviceWorker" in navigator &&
+  (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")
+) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch(() => {});
+  });
+}
 
 let swipeStartX = 0;
 let swipeStartY = 0;
@@ -218,14 +250,7 @@ el.soilForm.addEventListener("submit", (event) => {
     crop: el.soilCrop.value.trim(),
     createdAt: existing?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    components: {
-      ph: numberValue(el.soilPh),
-      ec: numberValue(el.soilEc),
-      n: numberValue(el.soilN),
-      p: numberValue(el.soilP),
-      k: numberValue(el.soilK),
-      humus: numberValue(el.soilHumus),
-    },
+    components: readSoilComponents(),
     memo: el.soilMemo.value.trim(),
   };
 
@@ -247,15 +272,18 @@ el.retryOcr.addEventListener("click", () => {
 });
 el.dataView.addEventListener("change", renderRecords);
 el.sortMode.addEventListener("change", renderRecords);
-el.recordsOpenButton.addEventListener("click", () => switchView("recordsView"));
+el.recordsOpenButton.addEventListener("click", () => {
+  const recordsVisible = document.querySelector("#recordsView").classList.contains("is-active");
+  switchView(recordsVisible ? "entryView" : "recordsView");
+});
 el.backToEntry.addEventListener("click", () => switchView("entryView"));
-window.addEventListener("resize", drawChart);
+window.addEventListener("resize", () => drawChart({ animate: false }));
 el.visualPanel.addEventListener("toggle", () => {
-  if (el.visualPanel.open) requestAnimationFrame(drawChart);
+  if (el.visualPanel.open) requestAnimationFrame(() => drawChart({ animate: true }));
 });
 
 function render() {
-  drawChart();
+  drawChart({ animate: true });
   renderSummary();
   renderGuaranteeSummary();
   renderSuggestionOptions();
@@ -311,6 +339,25 @@ function readFertilizerComponents() {
   }, {});
 }
 
+function readSoilComponents() {
+  return {
+    ph: numberValue(el.soilPh),
+    ec: numberValue(el.soilEc),
+    nitrateNitrogen: numberValue(el.soilNitrateNitrogen),
+    ammoniumNitrogen: numberValue(el.soilAmmoniumNitrogen),
+    availablePhosphorus: numberValue(el.soilAvailablePhosphorus),
+    calcium: numberValue(el.soilCalcium),
+    magnesium: numberValue(el.soilMagnesium),
+    potassium: numberValue(el.soilPotassium),
+    cec: numberValue(el.soilCec),
+    phosphateAbsorption: numberValue(el.soilPhosphateAbsorption),
+    humus: numberValue(el.soilHumus),
+    baseSaturation: numberValue(el.soilBaseSaturation),
+    calciumMagnesiumRatio: numberValue(el.soilCalciumMagnesiumRatio),
+    magnesiumPotassiumRatio: numberValue(el.soilMagnesiumPotassiumRatio),
+  };
+}
+
 function renderGuaranteeSummary() {
   const components = readFertilizerComponents();
   const guaranteeLines = [];
@@ -352,46 +399,253 @@ function renderGuaranteeSummary() {
 
 function createFertilizerCard(record) {
   const card = document.querySelector("#fertilizerCardTemplate").content.firstElementChild.cloneNode(true);
-  const main = card.querySelector(".card-main");
-  main.innerHTML = `
-    ${record.photo ? `<img class="card-photo" alt="" src="${record.photo}">` : `<div class="card-photo"></div>`}
-    <div class="card-body">
-      <h3 class="card-title">${escapeHtml(record.name)}</h3>
-      <div class="meta-line"><span>${escapeHtml(record.type)}</span><span>${formatDate(record.registeredAt)}</span></div>
-      <div class="meta-line"><span>${escapeHtml(record.traits?.effect || "肥効未選択")}</span><span>${escapeHtml(record.traits?.kind || "種類未選択")}</span></div>
-      <div class="meta-line"><span>N ${escapeHtml(record.traits?.nitrogenKind || "未選択")}</span><span>P ${escapeHtml(record.traits?.phosphorusKind || "未選択")}</span><span>K ${escapeHtml(record.traits?.potassiumKind || "未選択")}</span></div>
-      <div class="mini-components">${componentKeys.map((key) => `<span>${componentLabels[key]} ${record.components?.[key] ?? 0}</span>`).join("")}</div>
-      <div class="meta-line"><span>${escapeHtml(record.manufacturer || "メーカー未記録")}</span></div>
-    </div>
+  card.innerHTML = `
+    <details class="record-toggle">
+      <summary class="record-summary">
+        ${record.photo ? `<img class="record-thumb" alt="" src="${record.photo}">` : `<div class="record-thumb"></div>`}
+        <span class="record-row-main">
+          <span class="record-title">${escapeHtml(record.name)}</span>
+          <span class="record-sub">${escapeHtml(record.type)} / ${formatDate(record.registeredAt)}</span>
+        </span>
+        <span class="record-chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="record-detail">
+        <div class="record-read">
+          ${record.photo ? `<img class="record-photo" alt="" src="${record.photo}">` : ""}
+          <div class="meta-line"><span>${escapeHtml(record.manufacturer || "メーカー未記録")}</span></div>
+          <div class="meta-line"><span>${escapeHtml(record.traits?.effect || "肥効未選択")}</span><span>${escapeHtml(record.traits?.kind || "種類未選択")}</span></div>
+          <div class="meta-line"><span>N ${escapeHtml(record.traits?.nitrogenKind || "未選択")}</span><span>P ${escapeHtml(record.traits?.phosphorusKind || "未選択")}</span><span>K ${escapeHtml(record.traits?.potassiumKind || "未選択")}</span></div>
+          ${renderMiniBars(componentKeys.map((key) => ({ label: componentLabels[key], value: record.components?.[key] ?? 0 })))}
+          ${record.memo ? `<p class="record-memo">${escapeHtml(record.memo)}</p>` : ""}
+          <div class="card-actions">
+            <button class="small-button edit" type="button">編集</button>
+            <button class="small-button danger delete" type="button">削除</button>
+          </div>
+        </div>
+        ${renderFertilizerInlineForm(record)}
+      </div>
+    </details>
   `;
-  main.addEventListener("click", () => {
+  card.querySelector(".record-toggle").addEventListener("toggle", (event) => {
+    const toggle = event.currentTarget;
+    if (!toggle.open) {
+      toggle.classList.remove("is-bar-animating");
+      return;
+    }
+    restartMiniBarAnimation(toggle);
     selectedFertilizerId = record.id;
-    drawChart();
+    drawChart({ animate: true });
     renderSummary();
   });
-  card.querySelector(".edit").addEventListener("click", () => editFertilizer(record));
+  card.querySelector(".edit").addEventListener("click", () => showInlineEdit(card));
+  card.querySelector(".cancel-inline-edit").addEventListener("click", () => hideInlineEdit(card));
+  card.querySelector(".record-edit-form").addEventListener("submit", (event) => saveInlineFertilizer(event, record));
   card.querySelector(".delete").addEventListener("click", () => deleteRecord("fertilizers", record.id));
   return card;
 }
 
 function createSoilCard(record) {
   const card = document.querySelector("#soilCardTemplate").content.firstElementChild.cloneNode(true);
-  const main = card.querySelector(".card-main");
-  main.innerHTML = `
-    <div class="card-body">
-      <h3 class="card-title">${escapeHtml(record.place)}</h3>
-      <div class="meta-line"><span>${escapeHtml(record.texture)}</span><span>${formatDate(record.date)}</span></div>
-      <div class="mini-components">${Object.entries(soilLabels).map(([key, label]) => `<span>${label} ${record.components[key]}</span>`).join("")}</div>
-      <div class="meta-line"><span>${escapeHtml(record.crop || "作物未記録")}</span></div>
-      <p class="meta-line">${escapeHtml(record.memo || "")}</p>
-    </div>
+  card.innerHTML = `
+    <details class="record-toggle">
+      <summary class="record-summary">
+        <div class="record-thumb soil-thumb"></div>
+        <span class="record-row-main">
+          <span class="record-title">${escapeHtml(record.place)}</span>
+          <span class="record-sub">${escapeHtml(record.texture)} / ${formatDate(record.date)}</span>
+        </span>
+        <span class="record-chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="record-detail">
+        <div class="record-read">
+          <div class="meta-line"><span>${escapeHtml(record.crop || "作物未記録")}</span></div>
+          ${renderMiniBars(Object.entries(soilLabels).map(([key, label]) => ({ label, value: soilComponentValue(record, key) })))}
+          ${record.memo ? `<p class="record-memo">${escapeHtml(record.memo)}</p>` : ""}
+          <div class="card-actions">
+            <button class="small-button edit" type="button">編集</button>
+            <button class="small-button danger delete" type="button">削除</button>
+          </div>
+        </div>
+        ${renderSoilInlineForm(record)}
+      </div>
+    </details>
   `;
-  card.querySelector(".edit").addEventListener("click", () => editSoil(record));
+  card.querySelector(".record-toggle").addEventListener("toggle", (event) => {
+    const toggle = event.currentTarget;
+    if (!toggle.open) {
+      toggle.classList.remove("is-bar-animating");
+      return;
+    }
+    restartMiniBarAnimation(toggle);
+  });
+  card.querySelector(".edit").addEventListener("click", () => showInlineEdit(card));
+  card.querySelector(".cancel-inline-edit").addEventListener("click", () => hideInlineEdit(card));
+  card.querySelector(".record-edit-form").addEventListener("submit", (event) => saveInlineSoil(event, record));
   card.querySelector(".delete").addEventListener("click", () => deleteRecord("soils", record.id));
   return card;
 }
 
-function drawChart() {
+function renderFertilizerInlineForm(record) {
+  return `
+    <form class="record-edit-form" hidden>
+      <div class="inline-edit-grid">
+        ${editInput("name", "名前", record.name, "text", true)}
+        ${editSelect("type", "種類", fertilizerTypeOptions, record.type)}
+        ${editInput("manufacturer", "メーカー", record.manufacturer)}
+        ${editInput("registeredAt", "登録日", record.registeredAt, "date", true)}
+        ${editSelect("effect", "肥効", fertilizerEffectOptions, record.traits?.effect || "未選択")}
+        ${editInput("kind", "種類詳細", record.traits?.kind || "")}
+        ${editSelect("nitrogenKind", "N", nitrogenKindOptions, record.traits?.nitrogenKind || "未選択")}
+        ${editSelect("phosphorusKind", "P", phosphorusKindOptions, record.traits?.phosphorusKind || "未選択")}
+        ${editSelect("potassiumKind", "K", potassiumKindOptions, record.traits?.potassiumKind || "未選択")}
+        ${componentKeys.map((key) => editInput(`component-${key}`, componentLabels[key], record.components?.[key] ?? 0, "number")).join("")}
+        <label class="inline-field span-all">メモ<textarea name="memo" rows="2">${escapeHtml(record.memo || "")}</textarea></label>
+      </div>
+      <div class="card-actions">
+        <button class="secondary cancel-inline-edit" type="button">戻す</button>
+        <button class="primary" type="submit">保存</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderSoilInlineForm(record) {
+  return `
+    <form class="record-edit-form" hidden>
+      <div class="inline-edit-grid">
+        ${editInput("place", "場所", record.place, "text", true)}
+        ${editInput("date", "記録日", record.date, "date", true)}
+        ${editSelect("texture", "土性", soilTextureOptions, record.texture)}
+        ${editInput("crop", "作物", record.crop)}
+        ${Object.entries(soilLabels).map(([key, label]) => editInput(`component-${key}`, label, soilComponentValue(record, key), "number")).join("")}
+        <label class="inline-field span-all">メモ<textarea name="memo" rows="2">${escapeHtml(record.memo || "")}</textarea></label>
+      </div>
+      <div class="card-actions">
+        <button class="secondary cancel-inline-edit" type="button">戻す</button>
+        <button class="primary" type="submit">保存</button>
+      </div>
+    </form>
+  `;
+}
+
+function soilComponentValue(record, key) {
+  const components = record.components || {};
+  if (components[key] !== undefined) return components[key];
+  const legacyMap = {
+    nitrateNitrogen: "n",
+    availablePhosphorus: "p",
+    potassium: "k",
+  };
+  return components[legacyMap[key]] ?? 0;
+}
+
+function showInlineEdit(card) {
+  card.classList.add("is-editing");
+  card.querySelector(".record-read").hidden = true;
+  card.querySelector(".record-edit-form").hidden = false;
+}
+
+function hideInlineEdit(card) {
+  card.classList.remove("is-editing");
+  card.querySelector(".record-edit-form").hidden = true;
+  card.querySelector(".record-read").hidden = false;
+}
+
+function saveInlineFertilizer(event, record) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const updated = {
+    ...record,
+    name: String(data.get("name") || "").trim(),
+    type: String(data.get("type") || ""),
+    manufacturer: String(data.get("manufacturer") || "").trim(),
+    registeredAt: String(data.get("registeredAt") || ""),
+    updatedAt: new Date().toISOString(),
+    traits: {
+      ...record.traits,
+      effect: String(data.get("effect") || "未選択"),
+      kind: String(data.get("kind") || "").trim() || "未選択",
+      nitrogenKind: String(data.get("nitrogenKind") || "未選択"),
+      phosphorusKind: String(data.get("phosphorusKind") || "未選択"),
+      potassiumKind: String(data.get("potassiumKind") || "未選択"),
+    },
+    components: readComponentsFromForm(data, componentKeys),
+    memo: String(data.get("memo") || "").trim(),
+  };
+  state.fertilizers = upsert(state.fertilizers, updated);
+  selectedFertilizerId = updated.id;
+  saveState();
+  render();
+}
+
+function saveInlineSoil(event, record) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const updated = {
+    ...record,
+    place: String(data.get("place") || "").trim(),
+    date: String(data.get("date") || ""),
+    texture: String(data.get("texture") || ""),
+    crop: String(data.get("crop") || "").trim(),
+    updatedAt: new Date().toISOString(),
+    components: readComponentsFromForm(data, Object.keys(soilLabels)),
+    memo: String(data.get("memo") || "").trim(),
+  };
+  state.soils = upsert(state.soils, updated);
+  saveState();
+  render();
+}
+
+function readComponentsFromForm(data, keys) {
+  return keys.reduce((components, key) => {
+    components[key] = Number.parseFloat(data.get(`component-${key}`)) || 0;
+    return components;
+  }, {});
+}
+
+function editInput(name, label, value, type = "text", required = false) {
+  const step = type === "number" ? ' step="0.1" min="0"' : "";
+  return `<label class="inline-field">${escapeHtml(label)}<input name="${escapeHtml(name)}" type="${type}" value="${escapeHtml(value ?? "")}"${required ? " required" : ""}${step}></label>`;
+}
+
+function editSelect(name, label, options, selected) {
+  return `
+    <label class="inline-field">${escapeHtml(label)}
+      <select name="${escapeHtml(name)}">
+        ${options.map((option) => `<option${option === selected ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function renderMiniBars(items) {
+  const max = Math.max(1, ...items.map((item) => Number(item.value) || 0));
+  return `
+    <div class="mini-bars">
+      ${items.map((item) => {
+        const value = Number(item.value) || 0;
+        const width = max ? Math.round((value / max) * 100) : 0;
+        return `
+          <div class="mini-bar-row">
+            <span class="mini-bar-label">${escapeHtml(item.label)}</span>
+            <span class="mini-bar-track"><span class="mini-bar-fill" style="width: ${width}%"></span></span>
+            <span class="mini-bar-value">${escapeHtml(value)}</span>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function restartMiniBarAnimation(toggle) {
+  toggle.classList.remove("is-bar-animating");
+  void toggle.offsetWidth;
+  toggle.classList.add("is-bar-animating");
+}
+
+function drawChart(options = {}) {
   const ctx = el.chart.getContext("2d");
   const rect = el.chart.getBoundingClientRect();
   const scale = window.devicePixelRatio || 1;
@@ -408,10 +662,27 @@ function drawChart() {
 
   const values = componentKeys.map((key) => selected.components?.[key] || 0);
   const max = Math.max(10, ...values);
-  drawBars(ctx, width, height, values, max);
+  const shouldAnimate = options.animate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!shouldAnimate) {
+    drawBars(ctx, width, height, values, max, 1);
+    return;
+  }
+
+  const duration = 520;
+  const startedAt = performance.now();
+  cancelAnimationFrame(chartAnimationFrame);
+
+  const tick = (now) => {
+    const progress = Math.min(1, (now - startedAt) / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    ctx.clearRect(0, 0, width, height);
+    drawBars(ctx, width, height, values, max, eased);
+    if (progress < 1) chartAnimationFrame = requestAnimationFrame(tick);
+  };
+  chartAnimationFrame = requestAnimationFrame(tick);
 }
 
-function drawBars(ctx, width, height, values, max) {
+function drawBars(ctx, width, height, values, max, progress = 1) {
   const pad = 44;
   const graphHeight = height - pad * 2;
   const barWidth = (width - pad * 2) / values.length - 18;
@@ -423,7 +694,7 @@ function drawBars(ctx, width, height, values, max) {
   }
   values.forEach((value, index) => {
     const x = pad + index * (barWidth + 18) + 10;
-    const h = (value / max) * graphHeight;
+    const h = (value / max) * graphHeight * progress;
     ctx.fillStyle = colors[index];
     roundRect(ctx, x, height - pad - h, barWidth, h, 8);
     ctx.fill();
@@ -475,12 +746,20 @@ function editSoil(record) {
   el.soilDate.value = record.date;
   el.soilTexture.value = record.texture;
   el.soilCrop.value = record.crop;
-  el.soilPh.value = record.components.ph ?? 0;
-  el.soilEc.value = record.components.ec ?? 0;
-  el.soilN.value = record.components.n ?? 0;
-  el.soilP.value = record.components.p ?? 0;
-  el.soilK.value = record.components.k ?? 0;
-  el.soilHumus.value = record.components.humus ?? 0;
+  el.soilPh.value = soilComponentValue(record, "ph");
+  el.soilEc.value = soilComponentValue(record, "ec");
+  el.soilNitrateNitrogen.value = soilComponentValue(record, "nitrateNitrogen");
+  el.soilAmmoniumNitrogen.value = soilComponentValue(record, "ammoniumNitrogen");
+  el.soilAvailablePhosphorus.value = soilComponentValue(record, "availablePhosphorus");
+  el.soilCalcium.value = soilComponentValue(record, "calcium");
+  el.soilMagnesium.value = soilComponentValue(record, "magnesium");
+  el.soilPotassium.value = soilComponentValue(record, "potassium");
+  el.soilCec.value = soilComponentValue(record, "cec");
+  el.soilPhosphateAbsorption.value = soilComponentValue(record, "phosphateAbsorption");
+  el.soilHumus.value = soilComponentValue(record, "humus");
+  el.soilBaseSaturation.value = soilComponentValue(record, "baseSaturation");
+  el.soilCalciumMagnesiumRatio.value = soilComponentValue(record, "calciumMagnesiumRatio");
+  el.soilMagnesiumPotassiumRatio.value = soilComponentValue(record, "magnesiumPotassiumRatio");
   el.soilMemo.value = record.memo;
   el.soilPlace.focus();
 }
@@ -529,6 +808,11 @@ function resetSoilForm() {
   el.soilId.value = "";
   setDefaultDates();
   el.soilPh.value = 6.5;
+  Object.keys(soilLabels).forEach((key) => {
+    if (key === "ph") return;
+    const fieldName = `soil${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+    if (el[fieldName]) el[fieldName].value = 0;
+  });
 }
 
 function switchTab(name, direction = name === "soil" ? "right" : "left") {
@@ -544,9 +828,10 @@ function switchTab(name, direction = name === "soil" ? "right" : "left") {
 
 function switchView(id) {
   el.viewPanes.forEach((pane) => pane.classList.toggle("is-active", pane.id === id));
-  el.recordsOpenButton.hidden = id === "recordsView";
+  el.recordsOpenButton.textContent = id === "recordsView" ? "入力へ戻る" : "登録データ";
+  el.recordsOpenButton.setAttribute("aria-label", el.recordsOpenButton.textContent);
   if (id === "entryView") {
-    requestAnimationFrame(drawChart);
+    requestAnimationFrame(() => drawChart({ animate: true }));
   }
 }
 
