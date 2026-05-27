@@ -865,20 +865,52 @@ async function runPhotoAutoRead(src) {
 }
 
 async function readTextFromImage(src) {
+  const sources = (Array.isArray(src) ? src : [src]).filter(Boolean);
+  let bestText = "";
+  let bestScore = -1;
+
+  for (const source of sources) {
+    const text = await readTextFromSingleImage(source);
+    const score = scoreOcrText(text);
+    if (score > bestScore) {
+      bestText = text;
+      bestScore = score;
+    }
+  }
+
+  return bestText;
+}
+
+async function readTextFromSingleImage(src) {
   if ("TextDetector" in window) {
     const blob = await dataUrlToBlob(src);
     const bitmap = await createImageBitmap(blob);
     const detector = new TextDetector();
     const lines = await detector.detect(bitmap);
     const text = lines.map((line) => line.rawValue).join("\n");
-    if (text.trim()) return text;
+    if (text.trim() && scoreOcrText(text) >= 8) return text;
   }
 
   await loadTesseract();
   const result = await Tesseract.recognize(src, "jpn+eng", {
     preserve_interword_spaces: "1",
+    tessedit_pageseg_mode: "6",
   });
   return result.data.text || "";
+}
+
+function scoreOcrText(text) {
+  const normalized = normalizeOcrText(text || "");
+  const componentHits = [
+    "nitrogen", "phosphorus", "potassium", "calcium", "magnesium",
+    "carbon", "sulfur", "iron", "zinc", "copper", "boron",
+    "窒素", "リン", "りん", "カリ", "加里", "石灰", "苦土", "硫黄", "鉄", "亜鉛", "銅", "ホウ素",
+    "遯堤ｴ", "繝ｪ繝ｳ", "繧ｫ繝ｪ", "遏ｳ轣ｰ", "闍ｦ蝨",
+    "n", "p2o5", "k2o", "npk",
+  ].reduce((score, word) => score + (normalized.includes(word.toLowerCase()) ? 5 : 0), 0);
+  const numberHits = (normalized.match(/\b[0-9]{1,2}(?:\.[0-9]+)?\s*%?/g) || []).length;
+  const ratioHits = (normalized.match(/[0-9]+(?:\.[0-9]+)?\s*[-:\/]\s*[0-9]+(?:\.[0-9]+)?\s*[-:\/]\s*[0-9]+(?:\.[0-9]+)?/g) || []).length;
+  return componentHits + Math.min(numberHits, 24) + ratioHits * 12 + Math.min(normalized.length / 80, 8);
 }
 
 function loadTesseract() {
@@ -1033,28 +1065,52 @@ function prepareOcrImage(file) {
       const image = new Image();
       image.onerror = reject;
       image.onload = () => {
-        const ratio = Math.min(2, Math.max(1, 1600 / Math.max(image.width, image.height)));
+        const ratio = Math.min(3, Math.max(1.25, 2200 / Math.max(image.width, image.height)));
         const canvas = document.createElement("canvas");
         canvas.width = Math.round(image.width * ratio);
         canvas.height = Math.round(image.height * ratio);
         const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-          const boosted = gray > 185 ? 255 : gray < 105 ? 0 : gray * 0.82;
-          data[i] = boosted;
-          data[i + 1] = boosted;
-          data[i + 2] = boosted;
-        }
-        ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
+        resolve([
+          canvas.toDataURL("image/png"),
+          createOcrVariant(canvas, "contrast"),
+          createOcrVariant(canvas, "threshold"),
+          createOcrVariant(canvas, "darkText"),
+        ]);
       };
       image.src = reader.result;
     };
     reader.readAsDataURL(file);
   });
+}
+
+function createOcrVariant(sourceCanvas, mode) {
+  const canvas = document.createElement("canvas");
+  canvas.width = sourceCanvas.width;
+  canvas.height = sourceCanvas.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(sourceCanvas, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  const threshold = mode === "darkText" ? 178 : 154;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+    let value = gray;
+    if (mode === "contrast") {
+      value = Math.max(0, Math.min(255, (gray - 128) * 1.8 + 128));
+    } else if (mode === "threshold" || mode === "darkText") {
+      value = gray > threshold ? 255 : 0;
+    }
+    data[i] = value;
+    data[i + 1] = value;
+    data[i + 2] = value;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return canvas.toDataURL("image/png");
 }
 
 function resizeImage(file, maxSize) {

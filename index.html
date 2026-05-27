@@ -4,14 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#2f6f55" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="肥料・土壌ログ" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="肥料・土壌ログ" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>肥料・土壌データ管理</title>
-    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="manifest" href="manifest.webmanifest?v=20260527-pwa-ocr" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon.svg" />
-    <link rel="stylesheet" href="styles.css?v=20260527-record-toggle-2" />
+    <link rel="stylesheet" href="styles.css?v=20260527-pwa-ocr" />
   </head>
   <body>
     <header class="app-header">
@@ -36,7 +38,7 @@
           <input type="hidden" id="potassiumKind" value="" />
           <div class="form-row span-2 photo-input-row">
             <label for="packagePhoto">パッケージ写真</label>
-            <input id="packagePhoto" type="file" accept="image/*" />
+            <input id="packagePhoto" type="file" accept="image/*" capture="environment" />
           </div>
           <div class="photo-preview span-2" id="photoPreview">
             <span>写真プレビュー</span>
@@ -332,6 +334,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=20260527-record-toggle-2"></script>
+    <script src="app.js?v=20260527-pwa-ocr"></script>
   </body>
 </html>
