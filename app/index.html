@@ -38,7 +38,7 @@
           <input type="hidden" id="potassiumKind" value="" />
           <div class="form-row span-2 photo-input-row">
             <label for="packagePhoto">パッケージ写真</label>
-            <input id="packagePhoto" type="file" accept="image/*" capture="environment" />
+            <input id="packagePhoto" type="file" accept="image/*" />
           </div>
           <div class="photo-preview span-2" id="photoPreview">
             <span>写真プレビュー</span>
@@ -76,7 +76,7 @@
             <input id="registeredAt" type="date" required />
           </div>
 
-          <details class="toggle-section span-2" open>
+          <details class="toggle-section span-2">
             <summary>成分内訳</summary>
             <section class="fertilizer-traits" aria-label="肥料特質">
               <div class="trait-grid">
@@ -244,7 +244,7 @@
             <input id="soilCrop" list="soilCropOptions" placeholder="任意" />
           </div>
 
-          <details class="toggle-section span-2" open>
+          <details class="toggle-section span-2">
             <summary>土壌成分表</summary>
             <fieldset class="component-fieldset">
               <legend>土壌成分表</legend>
@@ -277,7 +277,7 @@
         </form>
       </section>
 
-      <details class="panel visual-panel toggle-section" aria-label="成分グラフ" open>
+      <details class="panel visual-panel toggle-section" aria-label="成分グラフ">
         <summary class="chart-summary">
           <span>成分グラフ</span>
         </summary>
