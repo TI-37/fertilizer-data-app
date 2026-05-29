@@ -892,11 +892,21 @@ async function readTextFromSingleImage(src) {
   }
 
   await loadTesseract();
+  // PSM 11: sparse text — best for scattered text on packaging labels
   const result = await Tesseract.recognize(src, "jpn+eng", {
+    preserve_interword_spaces: "1",
+    tessedit_pageseg_mode: "11",
+  });
+  const text11 = result.data.text || "";
+  if (scoreOcrText(text11) >= 20) return text11;
+
+  // Fallback: PSM 6 for structured/tabular layouts
+  const result6 = await Tesseract.recognize(src, "jpn+eng", {
     preserve_interword_spaces: "1",
     tessedit_pageseg_mode: "6",
   });
-  return result.data.text || "";
+  const text6 = result6.data.text || "";
+  return scoreOcrText(text11) >= scoreOcrText(text6) ? text11 : text6;
 }
 
 function scoreOcrText(text) {
@@ -935,18 +945,18 @@ function parseFertilizerComponents(text) {
     carbon: findComponentValue(normalized, ["炭素", "carbon", " c "]),
     hydrogen: findComponentValue(normalized, ["水素", "hydrogen", " h "]),
     oxygen: findComponentValue(normalized, ["酸素", "oxygen", " o "]),
-    nitrogen: findComponentValue(normalized, ["窒素", "全窒素", "チッソ", "ちっそ", "nitrogen", " n ", "tn"]),
-    phosphorus: findComponentValue(normalized, ["リン酸", "りん酸", "燐酸", "りん", "燐", "phosphorus", "phosphate", "p2o5", "p205", " p "]),
-    potassium: findComponentValue(normalized, ["カリ", "加里", "potash", "potassium", "k2o", "k20", " k "]),
-    calcium: findComponentValue(normalized, ["石灰", "カルシウム", "calcium", " ca "]),
-    magnesium: findComponentValue(normalized, ["苦土", "マグネシウム", "magnesium", " mg "]),
-    sulfur: findComponentValue(normalized, ["硫黄", "硫酸", "sulfur", "sulphur", " s "]),
-    iron: findComponentValue(normalized, ["鉄", "iron", " fe "]),
-    manganese: findComponentValue(normalized, ["マンガン", "manganese", " mn "]),
-    zinc: findComponentValue(normalized, ["亜鉛", "zinc", " zn "]),
-    copper: findComponentValue(normalized, ["銅", "copper", " cu "]),
-    boron: findComponentValue(normalized, ["ホウ素", "ほう素", "boron", " b "]),
-    molybdenum: findComponentValue(normalized, ["モリブデン", "molybdenum", " mo "]),
+    nitrogen: findComponentValue(normalized, ["窒素全量", "全窒素", "有機態窒素", "硝酸態窒素", "アンモニア態窒素", "窒素", "チッソ", "ちっそ", "nitrogen", " n ", "tn"]),
+    phosphorus: findComponentValue(normalized, ["水溶性りん酸", "可溶性りん酸", "く溶性りん酸", "りん酸全量", "リン酸", "りん酸", "燐酸", "りん", "燐", "phosphorus", "phosphate", "p2o5", "p205", " p "]),
+    potassium: findComponentValue(normalized, ["水溶性加里", "く溶性加里", "加里全量", "カリ", "加里", "potash", "potassium", "k2o", "k20", " k "]),
+    calcium: findComponentValue(normalized, ["可溶性石灰", "く溶性石灰", "水溶性石灰", "石灰全量", "石灰", "カルシウム", "calcium", "caco", " ca "]),
+    magnesium: findComponentValue(normalized, ["可溶性苦土", "く溶性苦土", "水溶性苦土", "苦土", "マグネシウム", "magnesium", " mg "]),
+    sulfur: findComponentValue(normalized, ["可溶性硫黄", "硫黄", "硫酸", "sulfur", "sulphur", " s "]),
+    iron: findComponentValue(normalized, ["可溶性鉄", "水溶性鉄", "鉄", "iron", " fe "]),
+    manganese: findComponentValue(normalized, ["可溶性マンガン", "水溶性マンガン", "マンガン", "manganese", " mn "]),
+    zinc: findComponentValue(normalized, ["水溶性亜鉛", "亜鉛", "zinc", " zn "]),
+    copper: findComponentValue(normalized, ["水溶性銅", "銅", "copper", " cu "]),
+    boron: findComponentValue(normalized, ["水溶性ほう素", "く溶性ほう素", "ホウ素", "ほう素", "boron", " b "]),
+    molybdenum: findComponentValue(normalized, ["水溶性モリブデン", "モリブデン", "molybdenum", " mo "]),
     chlorine: findComponentValue(normalized, ["塩素", "chlorine", " chloride", " cl "]),
     nickel: findComponentValue(normalized, ["ニッケル", "nickel", " ni "]),
   };
@@ -967,6 +977,12 @@ function normalizeOcrText(text) {
     .replace(/[％%]/g, " %")
     .replace(/[|｜]/g, " ")
     .replace(/[：]/g, ":")
+    // Fix common OCR digit confusions (O↔0, l/I↔1, S↔5, Z↔2) near numbers
+    .replace(/([0-9])[oO]([0-9.])/g, "$10$2")
+    .replace(/([0-9.])[oO]([^a-z])/gi, "$10$2")
+    .replace(/([^a-z])[oO]([0-9.])/gi, "$10$2")
+    .replace(/([0-9])[lI]([^a-z])/g, "$11$2")
+    .replace(/([^a-z])[lI]([0-9])/g, "$11$2")
     .replace(/\s+/g, " ")
     .toLowerCase()} `;
 }
@@ -1065,7 +1081,7 @@ function prepareOcrImage(file) {
       const image = new Image();
       image.onerror = reject;
       image.onload = () => {
-        const ratio = Math.min(3, Math.max(1.25, 2200 / Math.max(image.width, image.height)));
+        const ratio = Math.min(3, Math.max(1.25, 2600 / Math.max(image.width, image.height)));
         const canvas = document.createElement("canvas");
         canvas.width = Math.round(image.width * ratio);
         canvas.height = Math.round(image.height * ratio);
@@ -1078,6 +1094,8 @@ function prepareOcrImage(file) {
           createOcrVariant(canvas, "contrast"),
           createOcrVariant(canvas, "threshold"),
           createOcrVariant(canvas, "darkText"),
+          createOcrVariant(canvas, "sharpen"),
+          createOcrVariant(canvas, "invertThreshold"),
         ]);
       };
       image.src = reader.result;
@@ -1092,21 +1110,40 @@ function createOcrVariant(sourceCanvas, mode) {
   canvas.height = sourceCanvas.height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(sourceCanvas, 0, 0);
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const width = canvas.width;
+  const height = canvas.height;
+  const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
   const threshold = mode === "darkText" ? 178 : 154;
 
+  // Pre-compute grayscale once (needed by sharpen kernel for neighbour lookups)
+  const gray = new Uint8ClampedArray(width * height);
   for (let i = 0; i < data.length; i += 4) {
-    const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-    let value = gray;
+    gray[i >> 2] = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+  }
+
+  for (let idx = 0; idx < gray.length; idx += 1) {
+    let value = gray[idx];
     if (mode === "contrast") {
-      value = Math.max(0, Math.min(255, (gray - 128) * 1.8 + 128));
+      value = Math.max(0, Math.min(255, (gray[idx] - 128) * 1.8 + 128));
     } else if (mode === "threshold" || mode === "darkText") {
-      value = gray > threshold ? 255 : 0;
+      value = gray[idx] > threshold ? 255 : 0;
+    } else if (mode === "invertThreshold") {
+      // For light text on a dark background: flip so text becomes dark on white
+      value = gray[idx] > 128 ? 0 : 255;
+    } else if (mode === "sharpen") {
+      const x = idx % width;
+      const y = (idx - x) / width;
+      const up = y > 0 ? gray[idx - width] : gray[idx];
+      const down = y < height - 1 ? gray[idx + width] : gray[idx];
+      const left = x > 0 ? gray[idx - 1] : gray[idx];
+      const right = x < width - 1 ? gray[idx + 1] : gray[idx];
+      value = Math.max(0, Math.min(255, 5 * gray[idx] - up - down - left - right));
     }
-    data[i] = value;
-    data[i + 1] = value;
-    data[i + 2] = value;
+    const pi = idx * 4;
+    data[pi] = value;
+    data[pi + 1] = value;
+    data[pi + 2] = value;
   }
 
   ctx.putImageData(imageData, 0, 0);
