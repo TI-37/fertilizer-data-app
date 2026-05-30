@@ -168,31 +168,22 @@
             </section>
             <fieldset class="component-fieldset">
               <legend>成分内訳</legend>
-              <details class="component-group">
-                <summary class="component-group-label">多量要素</summary>
+              <details class="component-group" open>
+                <summary class="component-group-label">保証形態別内訳</summary>
                 <div class="component-grid">
-                  <label>C 炭素<input id="carbon" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>H 水素<input id="hydrogen" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>O 酸素<input id="oxygen" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>N 窒素<input id="nitrogen" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>P リン酸<input id="phosphorus" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>K カリ<input id="potassium" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>Ca 石灰<input id="calcium" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>Mg 苦土<input id="magnesium" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>S 硫黄<input id="sulfur" type="number" min="0" step="0.1" value="0" /></label>
-                </div>
-              </details>
-              <details class="component-group">
-                <summary class="component-group-label">微量要素</summary>
-                <div class="component-grid">
-                  <label>Fe 鉄<input id="iron" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>Mn マンガン<input id="manganese" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>Zn 亜鉛<input id="zinc" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>Cu 銅<input id="copper" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>B ホウ素<input id="boron" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>Mo モリブデン<input id="molybdenum" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>Cl 塩素<input id="chlorine" type="number" min="0" step="0.1" value="0" /></label>
-                  <label>Ni ニッケル<input id="nickel" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>アンモニア性窒素<input id="ammoniacalNitrogen" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>硝酸性窒素<input id="nitrateNitrogen" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>可溶性りん酸<input id="solublePhosphate" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>水溶性りん酸<input id="waterSolublePhosphate" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>く溶性りん酸<input id="citrateSolublePhosphate" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>水溶性加里<input id="waterSolublePotassium" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>く溶性加里<input id="citrateSolublePotassium" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>可溶性苦土<input id="solubleMagnesium" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>く溶性苦土<input id="citrateSolubleMagnesium" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>水溶性苦土<input id="waterSolubleMagnesium" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>く溶性ほう素<input id="citrateSolubleBoron" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>水溶性ほう素<input id="waterSolubleBoron" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>アルカリ分<input id="alkali" type="number" min="0" step="0.1" value="0" /></label>
                 </div>
               </details>
             </fieldset>
@@ -264,6 +255,33 @@
                 <label>Ca/Mg<input id="soilCalciumMagnesiumRatio" type="number" min="0" step="0.1" value="0" /></label>
                 <label>Mg/K<input id="soilMagnesiumPotassiumRatio" type="number" min="0" step="0.1" value="0" /></label>
               </div>
+              <details class="component-group">
+                <summary class="component-group-label">多量要素</summary>
+                <div class="component-grid">
+                  <label>C 炭素<input id="carbon" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>H 水素<input id="hydrogen" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>O 酸素<input id="oxygen" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>N 窒素<input id="nitrogen" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>P リン酸<input id="phosphorus" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>K カリ<input id="potassium" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>Ca 石灰<input id="calcium" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>Mg 苦土<input id="magnesium" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>S 硫黄<input id="sulfur" type="number" min="0" step="0.1" value="0" /></label>
+                </div>
+              </details>
+              <details class="component-group">
+                <summary class="component-group-label">微量要素</summary>
+                <div class="component-grid">
+                  <label>Fe 鉄<input id="iron" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>Mn マンガン<input id="manganese" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>Zn 亜鉛<input id="zinc" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>Cu 銅<input id="copper" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>B ホウ素<input id="boron" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>Mo モリブデン<input id="molybdenum" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>Cl 塩素<input id="chlorine" type="number" min="0" step="0.1" value="0" /></label>
+                  <label>Ni ニッケル<input id="nickel" type="number" min="0" step="0.1" value="0" /></label>
+                </div>
+              </details>
             </fieldset>
           </details>
           <div class="form-row span-2">
@@ -340,6 +358,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=20260529-ocr-boost"></script>
+    <script src="app.js?v=20260530-soil-elements3"></script>
   </body>
 </html>

@@ -1,11 +1,11 @@
-const CACHE_NAME = "fertilizer-data-app-v15";
+const CACHE_NAME = "fertilizer-data-app-v19";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
-  "./styles.css?v=20260527-pwa-ocr",
+  "./styles.css?v=20260527-component-toggle",
   "./app.js",
-  "./app.js?v=20260527-pwa-ocr",
+  "./app.js?v=20260530-soil-elements3",
   "./manifest.webmanifest",
   "./manifest.webmanifest?v=20260527-pwa-ocr",
   "./icon.svg"

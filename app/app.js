@@ -56,6 +56,61 @@ const guaranteeRules = {
   chlorine: { legalName: "塩素", status: "reference" },
   nickel: { legalName: "ニッケル", status: "reference" },
 };
+// 保証形態別内訳（内成分）: 肥料表示ルールで保証票に記載される「全量」の内訳・形態別保証成分
+const formKeys = [
+  "ammoniacalNitrogen",
+  "nitrateNitrogen",
+  "solublePhosphate",
+  "waterSolublePhosphate",
+  "citrateSolublePhosphate",
+  "waterSolublePotassium",
+  "citrateSolublePotassium",
+  "solubleMagnesium",
+  "citrateSolubleMagnesium",
+  "waterSolubleMagnesium",
+  "citrateSolubleBoron",
+  "waterSolubleBoron",
+  "alkali",
+];
+const formLabels = {
+  ammoniacalNitrogen: "アンモニア性窒素",
+  nitrateNitrogen: "硝酸性窒素",
+  solublePhosphate: "可溶性りん酸",
+  waterSolublePhosphate: "水溶性りん酸",
+  citrateSolublePhosphate: "く溶性りん酸",
+  waterSolublePotassium: "水溶性加里",
+  citrateSolublePotassium: "く溶性加里",
+  solubleMagnesium: "可溶性苦土",
+  citrateSolubleMagnesium: "く溶性苦土",
+  waterSolubleMagnesium: "水溶性苦土",
+  citrateSolubleBoron: "く溶性ほう素",
+  waterSolubleBoron: "水溶性ほう素",
+  alkali: "アルカリ分",
+};
+// 内訳が属する主要成分（多量・微量）への対応。OCRで全量が読めない場合の補完に使う。
+const formParent = {
+  ammoniacalNitrogen: "nitrogen",
+  nitrateNitrogen: "nitrogen",
+  solublePhosphate: "phosphorus",
+  waterSolublePhosphate: "phosphorus",
+  citrateSolublePhosphate: "phosphorus",
+  waterSolublePotassium: "potassium",
+  citrateSolublePotassium: "potassium",
+  solubleMagnesium: "magnesium",
+  citrateSolubleMagnesium: "magnesium",
+  waterSolubleMagnesium: "magnesium",
+  citrateSolubleBoron: "boron",
+  waterSolubleBoron: "boron",
+  alkali: "calcium",
+};
+// 保証票で「全量」として表記される主要成分のラベル（内訳から推定した値の表示に使う）
+const guaranteeTotalLabels = {
+  nitrogen: "窒素全量",
+  phosphorus: "りん酸全量",
+  potassium: "加里全量",
+  magnesium: "苦土",
+  boron: "ほう素",
+};
 const soilLabels = {
   ph: "pH",
   ec: "EC",
@@ -127,6 +182,19 @@ const el = {
   molybdenum: document.querySelector("#molybdenum"),
   chlorine: document.querySelector("#chlorine"),
   nickel: document.querySelector("#nickel"),
+  ammoniacalNitrogen: document.querySelector("#ammoniacalNitrogen"),
+  nitrateNitrogen: document.querySelector("#nitrateNitrogen"),
+  solublePhosphate: document.querySelector("#solublePhosphate"),
+  waterSolublePhosphate: document.querySelector("#waterSolublePhosphate"),
+  citrateSolublePhosphate: document.querySelector("#citrateSolublePhosphate"),
+  waterSolublePotassium: document.querySelector("#waterSolublePotassium"),
+  citrateSolublePotassium: document.querySelector("#citrateSolublePotassium"),
+  solubleMagnesium: document.querySelector("#solubleMagnesium"),
+  citrateSolubleMagnesium: document.querySelector("#citrateSolubleMagnesium"),
+  waterSolubleMagnesium: document.querySelector("#waterSolubleMagnesium"),
+  citrateSolubleBoron: document.querySelector("#citrateSolubleBoron"),
+  waterSolubleBoron: document.querySelector("#waterSolubleBoron"),
+  alkali: document.querySelector("#alkali"),
   fertilizerMemo: document.querySelector("#fertilizerMemo"),
   soilId: document.querySelector("#soilId"),
   soilPlace: document.querySelector("#soilPlace"),
@@ -181,7 +249,7 @@ el.tabs.forEach((tab) => {
   tab.addEventListener("click", () => switchTab(tab.dataset.tab));
 });
 
-componentKeys.forEach((key) => {
+formKeys.forEach((key) => {
   el[key].addEventListener("input", renderGuaranteeSummary);
 });
 
@@ -227,7 +295,7 @@ el.fertilizerForm.addEventListener("submit", (event) => {
       phosphorusKind: el.phosphorusKind.value,
       potassiumKind: el.potassiumKind.value,
     },
-    components: readFertilizerComponents(),
+    forms: readFertilizerForms(),
     memo: el.fertilizerMemo.value.trim(),
   };
 
@@ -251,6 +319,7 @@ el.soilForm.addEventListener("submit", (event) => {
     createdAt: existing?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     components: readSoilComponents(),
+    elements: readSoilElements(),
     memo: el.soilMemo.value.trim(),
   };
 
@@ -332,10 +401,18 @@ function uniqueValues(values) {
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
 }
 
-function readFertilizerComponents() {
-  return componentKeys.reduce((components, key) => {
-    components[key] = numberValue(el[key]);
-    return components;
+// 多量要素・微量要素（土壌タブへ移行）。記録上は record.elements に保存する。
+function readSoilElements() {
+  return componentKeys.reduce((elements, key) => {
+    elements[key] = numberValue(el[key]);
+    return elements;
+  }, {});
+}
+
+function readFertilizerForms() {
+  return formKeys.reduce((forms, key) => {
+    forms[key] = numberValue(el[key]);
+    return forms;
   }, {});
 }
 
@@ -358,42 +435,52 @@ function readSoilComponents() {
   };
 }
 
+// 形態別内訳（内成分）から主成分の全量（外成分）を肥料表示ルールに沿って推定する。
+function deriveGuaranteeTotals(forms) {
+  const n = (forms.ammoniacalNitrogen || 0) + (forms.nitrateNitrogen || 0);
+  const totals = {
+    nitrogen: n,
+    phosphorus: firstFinite(forms.solublePhosphate, forms.waterSolublePhosphate, forms.citrateSolublePhosphate) || 0,
+    potassium: firstFinite(forms.waterSolublePotassium, forms.citrateSolublePotassium) || 0,
+    magnesium: firstFinite(forms.solubleMagnesium, forms.citrateSolubleMagnesium, forms.waterSolubleMagnesium) || 0,
+    boron: firstFinite(forms.citrateSolubleBoron, forms.waterSolubleBoron) || 0,
+  };
+  return totals;
+}
+
 function renderGuaranteeSummary() {
-  const components = readFertilizerComponents();
-  const guaranteeLines = [];
-  const referenceLines = [];
-  componentKeys.forEach((key) => {
-    const value = components[key];
-    if (!value) return;
-    const rule = guaranteeRules[key];
-    const line = `${rule.legalName} ${formatPercent(value)}`;
-    if (rule.status === "guarantee") guaranteeLines.push(line);
-    else referenceLines.push(`${line}（参考成分）`);
-  });
+  const forms = readFertilizerForms();
+  const totals = deriveGuaranteeTotals(forms);
+  const guaranteeLines = Object.keys(guaranteeTotalLabels)
+    .filter((key) => totals[key])
+    .map((key) => `${guaranteeTotalLabels[key]} ${formatPercent(totals[key])}`);
+  const formLines = formKeys
+    .filter((key) => forms[key])
+    .map((key) => `${formLabels[key]} ${formatPercent(forms[key])}`);
 
   el.guaranteeSummary.innerHTML = "";
-  if (!guaranteeLines.length && !referenceLines.length) {
-    el.guaranteeSummary.textContent = "成分を入力すると、法規表記に近い保証成分量の概要を表示します。";
+  if (!guaranteeLines.length && !formLines.length) {
+    el.guaranteeSummary.textContent = "保証形態別の成分を入力すると、法規表記に近い保証成分量の概要を表示します。";
     return;
   }
 
   if (guaranteeLines.length) {
     const main = document.createElement("div");
     main.className = "summary-line";
-    main.textContent = `保証成分量: ${guaranteeLines.join("、")}`;
+    main.textContent = `保証成分量（推定）: ${guaranteeLines.join("、")}`;
     el.guaranteeSummary.append(main);
   }
 
-  if (referenceLines.length) {
-    const reference = document.createElement("div");
-    reference.className = "summary-note";
-    reference.textContent = `保証成分量としては要確認: ${referenceLines.join("、")}`;
-    el.guaranteeSummary.append(reference);
+  if (formLines.length) {
+    const breakdown = document.createElement("div");
+    breakdown.className = "summary-line";
+    breakdown.textContent = `保証形態別の内訳: ${formLines.join("、")}`;
+    el.guaranteeSummary.append(breakdown);
   }
 
   const note = document.createElement("div");
   note.className = "summary-note";
-  note.textContent = "保証成分量は主成分の最小量を百分比で示すものとして整理。石灰・苦土・マンガン・ほう素は可溶性等の区分を保証票に合わせて確認してください。";
+  note.textContent = "保証成分量は肥料表示の形態別保証成分（内成分）から推定した目安です。実際の保証票の全量表記と照合してください。";
   el.guaranteeSummary.append(note);
 }
 
@@ -415,7 +502,7 @@ function createFertilizerCard(record) {
           <div class="meta-line"><span>${escapeHtml(record.manufacturer || "メーカー未記録")}</span></div>
           <div class="meta-line"><span>${escapeHtml(record.traits?.effect || "肥効未選択")}</span><span>${escapeHtml(record.traits?.kind || "種類未選択")}</span></div>
           <div class="meta-line"><span>N ${escapeHtml(record.traits?.nitrogenKind || "未選択")}</span><span>P ${escapeHtml(record.traits?.phosphorusKind || "未選択")}</span><span>K ${escapeHtml(record.traits?.potassiumKind || "未選択")}</span></div>
-          ${renderMiniBars(componentKeys.map((key) => ({ label: componentLabels[key], value: record.components?.[key] ?? 0 })))}
+          ${renderMiniBars(formKeys.filter((key) => record.forms?.[key]).map((key) => ({ label: formLabels[key], value: record.forms[key] })))}
           ${record.memo ? `<p class="record-memo">${escapeHtml(record.memo)}</p>` : ""}
           <div class="card-actions">
             <button class="small-button edit" type="button">編集</button>
@@ -459,7 +546,10 @@ function createSoilCard(record) {
       <div class="record-detail">
         <div class="record-read">
           <div class="meta-line"><span>${escapeHtml(record.crop || "作物未記録")}</span></div>
-          ${renderMiniBars(Object.entries(soilLabels).map(([key, label]) => ({ label, value: soilComponentValue(record, key) })))}
+          ${renderMiniBars([
+            ...Object.entries(soilLabels).map(([key, label]) => ({ label, value: soilComponentValue(record, key) })),
+            ...componentKeys.filter((key) => record.elements?.[key]).map((key) => ({ label: componentLabels[key], value: record.elements[key] })),
+          ])}
           ${record.memo ? `<p class="record-memo">${escapeHtml(record.memo)}</p>` : ""}
           <div class="card-actions">
             <button class="small-button edit" type="button">編集</button>
@@ -498,7 +588,7 @@ function renderFertilizerInlineForm(record) {
         ${editSelect("nitrogenKind", "N", nitrogenKindOptions, record.traits?.nitrogenKind || "未選択")}
         ${editSelect("phosphorusKind", "P", phosphorusKindOptions, record.traits?.phosphorusKind || "未選択")}
         ${editSelect("potassiumKind", "K", potassiumKindOptions, record.traits?.potassiumKind || "未選択")}
-        ${componentKeys.map((key) => editInput(`component-${key}`, componentLabels[key], record.components?.[key] ?? 0, "number")).join("")}
+        ${formKeys.map((key) => editInput(`component-${key}`, formLabels[key], record.forms?.[key] ?? 0, "number")).join("")}
         <label class="inline-field span-all">メモ<textarea name="memo" rows="2">${escapeHtml(record.memo || "")}</textarea></label>
       </div>
       <div class="card-actions">
@@ -518,6 +608,7 @@ function renderSoilInlineForm(record) {
         ${editSelect("texture", "土性", soilTextureOptions, record.texture)}
         ${editInput("crop", "作物", record.crop)}
         ${Object.entries(soilLabels).map(([key, label]) => editInput(`component-${key}`, label, soilComponentValue(record, key), "number")).join("")}
+        ${componentKeys.map((key) => editInput(`element-${key}`, componentLabels[key], record.elements?.[key] ?? 0, "number")).join("")}
         <label class="inline-field span-all">メモ<textarea name="memo" rows="2">${escapeHtml(record.memo || "")}</textarea></label>
       </div>
       <div class="card-actions">
@@ -570,7 +661,7 @@ function saveInlineFertilizer(event, record) {
       phosphorusKind: String(data.get("phosphorusKind") || "未選択"),
       potassiumKind: String(data.get("potassiumKind") || "未選択"),
     },
-    components: readComponentsFromForm(data, componentKeys),
+    forms: readComponentsFromForm(data, formKeys),
     memo: String(data.get("memo") || "").trim(),
   };
   state.fertilizers = upsert(state.fertilizers, updated);
@@ -591,6 +682,7 @@ function saveInlineSoil(event, record) {
     crop: String(data.get("crop") || "").trim(),
     updatedAt: new Date().toISOString(),
     components: readComponentsFromForm(data, Object.keys(soilLabels)),
+    elements: readComponentsFromForm(data, componentKeys, "element-"),
     memo: String(data.get("memo") || "").trim(),
   };
   state.soils = upsert(state.soils, updated);
@@ -598,9 +690,9 @@ function saveInlineSoil(event, record) {
   render();
 }
 
-function readComponentsFromForm(data, keys) {
+function readComponentsFromForm(data, keys, prefix = "component-") {
   return keys.reduce((components, key) => {
-    components[key] = Number.parseFloat(data.get(`component-${key}`)) || 0;
+    components[key] = Number.parseFloat(data.get(`${prefix}${key}`)) || 0;
     return components;
   }, {});
 }
@@ -657,14 +749,17 @@ function drawChart(options = {}) {
   ctx.clearRect(0, 0, width, height);
 
   const selected = state.fertilizers.find((item) => item.id === selectedFertilizerId) || state.fertilizers[0];
-  el.chartEmpty.hidden = Boolean(selected);
-  if (!selected) return;
+  const forms = selected?.forms || {};
+  const items = formKeys
+    .filter((key) => forms[key])
+    .map((key) => ({ label: formLabels[key], value: forms[key] }));
+  el.chartEmpty.hidden = Boolean(selected) && items.length > 0;
+  if (!selected || !items.length) return;
 
-  const values = componentKeys.map((key) => selected.components?.[key] || 0);
-  const max = Math.max(10, ...values);
+  const max = Math.max(10, ...items.map((item) => item.value));
   const shouldAnimate = options.animate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (!shouldAnimate) {
-    drawBars(ctx, width, height, values, max, 1);
+    drawBars(ctx, width, height, items, max, 1);
     return;
   }
 
@@ -676,32 +771,33 @@ function drawChart(options = {}) {
     const progress = Math.min(1, (now - startedAt) / duration);
     const eased = 1 - Math.pow(1 - progress, 3);
     ctx.clearRect(0, 0, width, height);
-    drawBars(ctx, width, height, values, max, eased);
+    drawBars(ctx, width, height, items, max, eased);
     if (progress < 1) chartAnimationFrame = requestAnimationFrame(tick);
   };
   chartAnimationFrame = requestAnimationFrame(tick);
 }
 
-function drawBars(ctx, width, height, values, max, progress = 1) {
+function drawBars(ctx, width, height, items, max, progress = 1) {
   const pad = 44;
   const graphHeight = height - pad * 2;
-  const barWidth = (width - pad * 2) / values.length - 18;
+  const barWidth = (width - pad * 2) / items.length - 18;
   ctx.strokeStyle = "#d9ded2";
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i += 1) {
     const y = pad + (graphHeight / 4) * i;
     line(ctx, pad, y, width - pad, y);
   }
-  values.forEach((value, index) => {
+  items.forEach((item, index) => {
+    const value = item.value;
     const x = pad + index * (barWidth + 18) + 10;
     const h = (value / max) * graphHeight * progress;
-    ctx.fillStyle = colors[index];
+    ctx.fillStyle = colors[index % colors.length];
     roundRect(ctx, x, height - pad - h, barWidth, h, 8);
     ctx.fill();
     ctx.fillStyle = "#20251f";
-    ctx.font = "700 14px sans-serif";
+    ctx.font = "600 11px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(componentLabels[componentKeys[index]], x + barWidth / 2, height - 18);
+    ctx.fillText(item.label, x + barWidth / 2, height - 18);
     ctx.fillText(value, x + barWidth / 2, height - pad - h - 8);
   });
 }
@@ -726,8 +822,8 @@ function editFertilizer(record) {
   el.nitrogenKind.value = record.traits?.nitrogenKind || "未選択";
   el.phosphorusKind.value = record.traits?.phosphorusKind || "未選択";
   el.potassiumKind.value = record.traits?.potassiumKind || "未選択";
-  componentKeys.forEach((key) => {
-    el[key].value = record.components?.[key] ?? 0;
+  formKeys.forEach((key) => {
+    el[key].value = record.forms?.[key] ?? 0;
   });
   renderGuaranteeSummary();
   el.fertilizerMemo.value = record.memo;
@@ -760,6 +856,9 @@ function editSoil(record) {
   el.soilBaseSaturation.value = soilComponentValue(record, "baseSaturation");
   el.soilCalciumMagnesiumRatio.value = soilComponentValue(record, "calciumMagnesiumRatio");
   el.soilMagnesiumPotassiumRatio.value = soilComponentValue(record, "magnesiumPotassiumRatio");
+  componentKeys.forEach((key) => {
+    el[key].value = record.elements?.[key] ?? 0;
+  });
   el.soilMemo.value = record.memo;
   el.soilPlace.focus();
 }
@@ -797,7 +896,7 @@ function resetFertilizerForm() {
   el.nitrogenKind.value = "未選択";
   el.phosphorusKind.value = "未選択";
   el.potassiumKind.value = "未選択";
-  componentKeys.forEach((key) => {
+  formKeys.forEach((key) => {
     el[key].value = 0;
   });
   renderGuaranteeSummary();
@@ -812,6 +911,9 @@ function resetSoilForm() {
     if (key === "ph") return;
     const fieldName = `soil${key.charAt(0).toUpperCase()}${key.slice(1)}`;
     if (el[fieldName]) el[fieldName].value = 0;
+  });
+  componentKeys.forEach((key) => {
+    el[key].value = 0;
   });
 }
 
@@ -915,6 +1017,7 @@ function scoreOcrText(text) {
     "nitrogen", "phosphorus", "potassium", "calcium", "magnesium",
     "carbon", "sulfur", "iron", "zinc", "copper", "boron",
     "窒素", "リン", "りん", "カリ", "加里", "石灰", "苦土", "硫黄", "鉄", "亜鉛", "銅", "ホウ素",
+    "全量", "可溶性", "水溶性", "く溶性", "アンモニア", "硝酸", "保証成分",
     "遯堤ｴ", "繝ｪ繝ｳ", "繧ｫ繝ｪ", "遏ｳ轣ｰ", "闍ｦ蝨",
     "n", "p2o5", "k2o", "npk",
   ].reduce((score, word) => score + (normalized.includes(word.toLowerCase()) ? 5 : 0), 0);
@@ -946,8 +1049,8 @@ function parseFertilizerComponents(text) {
     hydrogen: findComponentValue(normalized, ["水素", "hydrogen", " h "]),
     oxygen: findComponentValue(normalized, ["酸素", "oxygen", " o "]),
     nitrogen: findComponentValue(normalized, ["窒素全量", "全窒素", "有機態窒素", "硝酸態窒素", "アンモニア態窒素", "窒素", "チッソ", "ちっそ", "nitrogen", " n ", "tn"]),
-    phosphorus: findComponentValue(normalized, ["水溶性りん酸", "可溶性りん酸", "く溶性りん酸", "りん酸全量", "リン酸", "りん酸", "燐酸", "りん", "燐", "phosphorus", "phosphate", "p2o5", "p205", " p "]),
-    potassium: findComponentValue(normalized, ["水溶性加里", "く溶性加里", "加里全量", "カリ", "加里", "potash", "potassium", "k2o", "k20", " k "]),
+    phosphorus: findComponentValue(normalized, ["りん酸全量", "可溶性りん酸", "水溶性りん酸", "く溶性りん酸", "リン酸", "りん酸", "燐酸", "りん", "燐", "phosphorus", "phosphate", "p2o5", "p205", " p "]),
+    potassium: findComponentValue(normalized, ["加里全量", "水溶性加里", "く溶性加里", "カリ", "加里", "potash", "potassium", "k2o", "k20", " k "]),
     calcium: findComponentValue(normalized, ["可溶性石灰", "く溶性石灰", "水溶性石灰", "石灰全量", "石灰", "カルシウム", "calcium", "caco", " ca "]),
     magnesium: findComponentValue(normalized, ["可溶性苦土", "く溶性苦土", "水溶性苦土", "苦土", "マグネシウム", "magnesium", " mg "]),
     sulfur: findComponentValue(normalized, ["可溶性硫黄", "硫黄", "硫酸", "sulfur", "sulphur", " s "]),
@@ -959,6 +1062,20 @@ function parseFertilizerComponents(text) {
     molybdenum: findComponentValue(normalized, ["水溶性モリブデン", "モリブデン", "molybdenum", " mo "]),
     chlorine: findComponentValue(normalized, ["塩素", "chlorine", " chloride", " cl "]),
     nickel: findComponentValue(normalized, ["ニッケル", "nickel", " ni "]),
+    // 保証形態別内訳（内成分）— 肥料表示ルールで保証票に記載される形態
+    ammoniacalNitrogen: findComponentValue(normalized, ["内アンモニア性窒素", "アンモニア性窒素", "アンモニア態窒素", "あんもにあ性窒素", "ammoniacal"]),
+    nitrateNitrogen: findComponentValue(normalized, ["内硝酸性窒素", "硝酸性窒素", "硝酸態窒素", "nitrate"]),
+    solublePhosphate: findComponentValue(normalized, ["内可溶性りん酸", "可溶性りん酸", "可溶性燐酸", "可溶性リン酸"]),
+    waterSolublePhosphate: findComponentValue(normalized, ["内水溶性りん酸", "水溶性りん酸", "水溶性燐酸", "水溶性リン酸"]),
+    citrateSolublePhosphate: findComponentValue(normalized, ["内く溶性りん酸", "く溶性りん酸", "枸溶性りん酸", "ク溶性りん酸"]),
+    waterSolublePotassium: findComponentValue(normalized, ["内水溶性加里", "水溶性加里", "水溶性カリ"]),
+    citrateSolublePotassium: findComponentValue(normalized, ["内く溶性加里", "く溶性加里", "枸溶性加里", "ク溶性加里"]),
+    solubleMagnesium: findComponentValue(normalized, ["内可溶性苦土", "可溶性苦土"]),
+    citrateSolubleMagnesium: findComponentValue(normalized, ["内く溶性苦土", "く溶性苦土", "ク溶性苦土"]),
+    waterSolubleMagnesium: findComponentValue(normalized, ["内水溶性苦土", "水溶性苦土"]),
+    citrateSolubleBoron: findComponentValue(normalized, ["く溶性ほう素", "ク溶性ほう素", "く溶性ホウ素"]),
+    waterSolubleBoron: findComponentValue(normalized, ["水溶性ほう素", "水溶性ホウ素"]),
+    alkali: findComponentValue(normalized, ["アルカリ分", "alkali"]),
   };
   const npk = findNpkRatio(normalized);
   if (npk) {
@@ -966,7 +1083,37 @@ function parseFertilizerComponents(text) {
     if (!Number.isFinite(result.phosphorus)) result.phosphorus = npk[1];
     if (!Number.isFinite(result.potassium)) result.potassium = npk[2];
   }
+  deriveTotalsFromForms(result);
   return result;
+}
+
+// 肥料表示ルールに基づく補完: 「全量(外成分)」が読み取れない場合、
+// 形態別保証成分(内成分)から主要成分の量を推定する。
+function deriveTotalsFromForms(result) {
+  if (!Number.isFinite(result.nitrogen)) {
+    const an = Number.isFinite(result.ammoniacalNitrogen) ? result.ammoniacalNitrogen : 0;
+    const nn = Number.isFinite(result.nitrateNitrogen) ? result.nitrateNitrogen : 0;
+    if (an || nn) result.nitrogen = Math.round((an + nn) * 10) / 10;
+  }
+  if (!Number.isFinite(result.phosphorus)) {
+    result.phosphorus = firstFinite(result.solublePhosphate, result.waterSolublePhosphate, result.citrateSolublePhosphate);
+  }
+  if (!Number.isFinite(result.potassium)) {
+    result.potassium = firstFinite(result.waterSolublePotassium, result.citrateSolublePotassium);
+  }
+  if (!Number.isFinite(result.magnesium)) {
+    result.magnesium = firstFinite(result.solubleMagnesium, result.citrateSolubleMagnesium, result.waterSolubleMagnesium);
+  }
+  if (!Number.isFinite(result.boron)) {
+    result.boron = firstFinite(result.citrateSolubleBoron, result.waterSolubleBoron);
+  }
+}
+
+function firstFinite(...values) {
+  for (const value of values) {
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
 }
 
 function normalizeOcrText(text) {
@@ -1037,11 +1184,11 @@ function applyParsedTextFields(text) {
 
 function applyParsedComponents(result) {
   const found = [];
-  componentKeys.forEach((key) => {
+  formKeys.forEach((key) => {
     const value = result[key];
     if (Number.isFinite(value)) {
       el[key].value = value;
-      found.push(`${componentLabels[key]} ${value}`);
+      found.push(`${formLabels[key]} ${value}`);
     }
   });
   renderGuaranteeSummary();
