@@ -627,6 +627,36 @@ textarea:focus {
   display: block;
 }
 
+/* 肥料カード詳細内の成分グラフ */
+.card-chart-wrap {
+  position: relative;
+  margin: 4px 0 8px;
+}
+
+.card-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.card-radar-wrap {
+  position: relative;
+  margin: -6px 0 4px;
+}
+
+.card-radar {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-caption {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .empty-message {
   position: absolute;
   inset: 0;
@@ -670,10 +700,46 @@ textarea:focus {
 }
 
 .record-card {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfcf8;
   overflow: hidden;
+}
+
+/* 左スワイプで現れる編集・削除アクション */
+.swipe-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.swipe-btn {
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 0 20px;
+  cursor: pointer;
+}
+
+.swipe-edit {
+  background: #5d7fa3;
+}
+
+.swipe-delete {
+  background: #b94635;
+}
+
+.swipe-content {
+  position: relative;
+  z-index: 1;
+  background: #fbfcf8;
+  transition: transform 0.2s ease;
+  touch-action: pan-y;
 }
 
 .record-toggle {
